@@ -5,7 +5,7 @@ Use these if an interviewer asks about this project.
 ## 30-second pitch
 
 "I built a voice-enabled mock interview simulator in Python. It parses a
-candidate's resume, generates tailored technical questions using the OpenAI
+candidate's resume, generates tailored technical questions using the Gemini
 API, listens to spoken answers via speech recognition, scores them in real
 time, and produces a full feedback report. I built it to practice structured
 prompt design and to have a reusable tool for my own interview prep."
@@ -36,13 +36,13 @@ prompt design and to have a reusable tool for my own interview prep."
 
 ## Likely follow-up questions & how to answer
 
-**"Why OpenAI instead of a local/offline model?"**
+**"Why Gemini instead of a local/offline model?"**
 → Talk about needing reliable structured JSON output at low latency, and
-that the architecture (isolated `ai_engine.py`) makes swapping providers
-straightforward later.
+that Gemini has a free tier that suits a student project. The architecture
+(isolated `ai_engine.py`) makes swapping providers straightforward later.
 
 **"How would you scale this to many concurrent users?"**
-→ Move from CLI to a Flask/FastAPI backend, queue OpenAI calls, cache
+→ Move from CLI to a Flask/FastAPI backend, queue Gemini calls, cache
 resume summaries, and store sessions in a database instead of local files.
 
 **"What was the hardest part?"**
