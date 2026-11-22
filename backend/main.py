@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from google.genai import errors as genai_errors
 from pydantic import BaseModel
 
 import rag_core
@@ -17,9 +18,15 @@ sessions: dict = {}   # session_id -> questions and answer records (in memory)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    state["items"] = rag_core.load_chunks_with_sources()
-    state["vectors"] = rag_core.embed([i["text"] for i in state["items"]])
+    items = rag_core.load_chunks_with_sources()
+    if not items:
+        raise RuntimeError(
+            "No readable notes found in backend/docs. Add PDF, .md or .txt files."
+        )
+    state["items"] = items
+    state["vectors"] = rag_core.embed_in_batches([i["text"] for i in items])
     state["engine"] = AIInterviewEngine()
+    print(f"Index ready: {len(items)} chunks loaded.")
     yield
 
 
@@ -44,6 +51,16 @@ class AnswerRequest(BaseModel):
     answer: str
 
 
+def ai_error(e: Exception) -> HTTPException:
+    """Turn a Gemini API failure into a clear message instead of a bare 500."""
+    print(f"Gemini error: {e}")
+    code = getattr(e, "code", "unknown")
+    return HTTPException(
+        503,
+        f"The AI service had a problem (code {code}). Please try again in a minute.",
+    )
+
+
 @app.post("/resume")
 async def upload_resume(file: UploadFile = File(...)):
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
@@ -53,7 +70,10 @@ async def upload_resume(file: UploadFile = File(...)):
         text = extract_text_from_pdf(path)
     finally:
         os.remove(path)
-    return state["engine"].summarize_resume(text)
+    try:
+        return state["engine"].summarize_resume(text)
+    except genai_errors.APIError as e:
+        raise ai_error(e) from e
 
 
 @app.post("/session/start")
@@ -62,10 +82,13 @@ def start_session(req: StartRequest):
         f"{req.role} interview", state["items"], state["vectors"], k=5
     )
     notes = "\n".join(h["text"] for h in hits)
-    questions = state["engine"].generate_questions(
-        req.role, req.difficulty, req.num_questions,
-        req.resume_summary, notes_context=notes,
-    )
+    try:
+        questions = state["engine"].generate_questions(
+            req.role, req.difficulty, req.num_questions,
+            req.resume_summary, notes_context=notes,
+        )
+    except genai_errors.APIError as e:
+        raise ai_error(e) from e
     if not questions:
         raise HTTPException(502, "Could not generate questions")
     sid = uuid.uuid4().hex
@@ -85,9 +108,12 @@ def answer(sid: str, body: AnswerRequest):
         q["question"], state["items"], state["vectors"]
     )
     reference = "\n".join(h["text"] for h in hits)
-    evaluation = state["engine"].evaluate_answer(
-        q["question"], body.answer, reference=reference
-    )
+    try:
+        evaluation = state["engine"].evaluate_answer(
+            q["question"], body.answer, reference=reference
+        )
+    except genai_errors.APIError as e:
+        raise ai_error(e) from e
     session["records"].append({
         "question": q["question"],
         "topic": q.get("topic", ""),
@@ -104,8 +130,12 @@ def report(sid: str):
         raise HTTPException(404, "No answers yet")
     records = session["records"]
     scores = [r["evaluation"].get("score", 0) for r in records if r["evaluation"]]
+    try:
+        summary = state["engine"].generate_final_report(records)
+    except genai_errors.APIError as e:
+        raise ai_error(e) from e
     return {
         "average_score": round(sum(scores) / len(scores), 1) if scores else 0,
         "records": records,
-        "summary": state["engine"].generate_final_report(records),
+        "summary": summary,
     }

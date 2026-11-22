@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import numpy as np
+import pdfplumber
 import requests
 
 OLLAMA_URL = "http://localhost:11434"
@@ -12,6 +13,9 @@ REQUEST_TIMEOUT = (5, 120)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[0]
 DOCS_DIR = PROJECT_ROOT / "docs"
+
+CHUNK_SIZE = 900
+CHUNK_OVERLAP = 150
 
 
 def embed(texts: list[str]) -> np.ndarray:
@@ -31,6 +35,27 @@ def embed(texts: list[str]) -> np.ndarray:
         raise ValueError("Ollama returned a different number of embeddings than requested.")
 
     return np.asarray(embeddings, dtype=np.float32)
+
+
+def embed_in_batches(texts: list[str], batch_size: int = 32) -> np.ndarray:
+    """Embed many chunks a few at a time so Ollama does not time out."""
+    parts = [embed(texts[i:i + batch_size]) for i in range(0, len(texts), batch_size)]
+    return np.vstack(parts)
+
+
+def _split_text(text: str, size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> list[str]:
+    """Cut text into overlapping pieces so ideas are not split cleanly in half."""
+    text = " ".join(text.split())
+    chunks: list[str] = []
+    start = 0
+    while start < len(text):
+        chunk = text[start:start + size].strip()
+        if len(chunk) > 50:
+            chunks.append(chunk)
+        if start + size >= len(text):
+            break
+        start += size - overlap
+    return chunks
 
 
 def load_chunks(docs_dir: Path = DOCS_DIR) -> list[str]:
@@ -53,6 +78,27 @@ def load_chunks(docs_dir: Path = DOCS_DIR) -> list[str]:
         raise ValueError(f"No Markdown content found in {docs_dir}.")
 
     return chunks
+
+
+def load_chunks_with_sources(docs_dir: Path = DOCS_DIR) -> list[dict]:
+    """Read PDF, Markdown and text files; remember file (and page) for each chunk."""
+    items: list[dict] = []
+    for file_path in sorted(docs_dir.iterdir()):
+        suffix = file_path.suffix.lower()
+        if suffix == ".pdf":
+            with pdfplumber.open(file_path) as pdf:
+                for page_no, page in enumerate(pdf.pages, start=1):
+                    text = page.extract_text() or ""
+                    for chunk in _split_text(text):
+                        items.append({
+                            "text": chunk,
+                            "source": f"{file_path.name} (p.{page_no})",
+                        })
+        elif suffix in {".md", ".txt"}:
+            text = file_path.read_text(encoding="utf-8")
+            for chunk in _split_text(text):
+                items.append({"text": chunk, "source": file_path.name})
+    return items
 
 
 def retrieve(
@@ -86,6 +132,14 @@ def retrieve(
     return [chunks[index] for index in best_indices]
 
 
+def retrieve_with_sources(question, items, vectors, k=3):
+    """Like retrieve, but returns text, source and score for each chunk."""
+    q = embed([question])[0]
+    scores = (vectors @ q) / (np.linalg.norm(vectors, axis=1) * np.linalg.norm(q) + 1e-9)
+    best = np.argsort(scores)[::-1][:k]
+    return [{**items[i], "score": float(scores[i])} for i in best]
+
+
 def ask_llm(prompt: str) -> str:
     """Send a prompt to the local Ollama chat model."""
     response = requests.post(
@@ -99,23 +153,6 @@ def ask_llm(prompt: str) -> str:
     )
     response.raise_for_status()
     return response.json()["message"]["content"]
-
-
-def load_chunks_with_sources(docs_dir: Path = DOCS_DIR) -> list[dict]:
-    """Like load_chunks, but remembers which file each chunk came from."""
-    items = []
-    for file_path in sorted(docs_dir.glob("*.md")):
-        for para in file_path.read_text(encoding="utf-8").split("\n\n"):
-            if para.strip():
-                items.append({"text": para.strip(), "source": file_path.name})
-    return items
-
-
-def retrieve_with_sources(question, items, vectors, k=3):
-    q = embed([question])[0]
-    scores = (vectors @ q) / (np.linalg.norm(vectors, axis=1) * np.linalg.norm(q) + 1e-9)
-    best = np.argsort(scores)[::-1][:k]
-    return [{**items[i], "score": float(scores[i])} for i in best]
 
 
 def answer_question(question, items, vectors) -> dict:
