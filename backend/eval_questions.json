@@ -1,0 +1,134 @@
+[
+  {
+    "question": "What does the temperature setting do to a model's output?",
+    "expected_files": [
+      "01_llm_fundamentals"
+    ],
+    "keywords": [
+      "temperature"
+    ]
+  },
+  {
+    "question": "Why does the context window limit matter when I send documents to a model?",
+    "expected_files": [
+      "01_llm_fundamentals"
+    ],
+    "keywords": [
+      "context window"
+    ]
+  },
+  {
+    "question": "How does reinforcement learning from human feedback make a model more helpful?",
+    "expected_files": [
+      "01_llm_fundamentals"
+    ],
+    "keywords": [
+      "reinforcement learning from human feedback",
+      "RLHF"
+    ]
+  },
+  {
+    "question": "What is few-shot prompting and when is it useful?",
+    "expected_files": [
+      "02_prompt_engineering"
+    ],
+    "keywords": [
+      "few-shot"
+    ]
+  },
+  {
+    "question": "How can I make an LLM return valid JSON reliably?",
+    "expected_files": [
+      "02_prompt_engineering"
+    ],
+    "keywords": [
+      "JSON"
+    ]
+  },
+  {
+    "question": "What is prompt injection and how can it be reduced?",
+    "expected_files": [
+      "02_prompt_engineering"
+    ],
+    "keywords": [
+      "prompt injection"
+    ]
+  },
+  {
+    "question": "When should I use RAG instead of fine-tuning a model?",
+    "expected_files": [
+      "03_generative_ai_overview",
+      "04_retrieval_augmented_generation"
+    ],
+    "keywords": [
+      "fine-tuning"
+    ]
+  },
+  {
+    "question": "What is the Model Context Protocol and what problem does it solve?",
+    "expected_files": [
+      "03_generative_ai_overview"
+    ],
+    "keywords": [
+      "Model Context Protocol",
+      "MCP"
+    ]
+  },
+  {
+    "question": "How do diffusion models generate images?",
+    "expected_files": [
+      "03_generative_ai_overview"
+    ],
+    "keywords": [
+      "diffusion"
+    ]
+  },
+  {
+    "question": "How should documents be split into chunks and why use overlap?",
+    "expected_files": [
+      "04_retrieval_augmented_generation"
+    ],
+    "keywords": [
+      "overlap"
+    ]
+  },
+  {
+    "question": "How do you measure whether a RAG system retrieves the right passages?",
+    "expected_files": [
+      "04_retrieval_augmented_generation"
+    ],
+    "keywords": [
+      "hit rate",
+      "recall at k",
+      "reciprocal rank"
+    ]
+  },
+  {
+    "question": "What is HNSW and how does it speed up similarity search?",
+    "expected_files": [
+      "05_vector_databases"
+    ],
+    "keywords": [
+      "HNSW"
+    ]
+  },
+  {
+    "question": "What is the difference between cosine similarity and Euclidean distance?",
+    "expected_files": [
+      "05_vector_databases"
+    ],
+    "keywords": [
+      "Euclidean"
+    ]
+  },
+  {
+    "question": "Why use approximate nearest neighbour search instead of exact search?",
+    "expected_files": [
+      "05_vector_databases"
+    ],
+    "keywords": [
+      "approximate nearest neighbour",
+      "ANN"
+    ]
+  }
+]
