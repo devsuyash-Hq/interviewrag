@@ -1,4 +1,5 @@
 import os
+import random
 import tempfile
 import uuid
 from contextlib import asynccontextmanager
@@ -43,6 +44,7 @@ class StartRequest(BaseModel):
     role: str
     difficulty: str = "medium"
     num_questions: int = 5
+    topic: str = ""          # e.g. "Prompt Engineering"; empty means any topic
     resume_summary: dict | None = None
 
 
@@ -59,6 +61,20 @@ def ai_error(e: Exception) -> HTTPException:
         503,
         f"The AI service had a problem (code {code}). Please try again in a minute.",
     )
+
+
+@app.get("/topics")
+def topics():
+    """Topics offered in the UI (kept here so frontend and backend agree)."""
+    return {
+        "topics": [
+            "Large Language Models (LLMs)",
+            "Prompt Engineering",
+            "Generative AI",
+            "Retrieval-Augmented Generation (RAG)",
+            "Vector Databases",
+        ]
+    }
 
 
 @app.post("/resume")
@@ -78,13 +94,21 @@ async def upload_resume(file: UploadFile = File(...)):
 
 @app.post("/session/start")
 def start_session(req: StartRequest):
-    hits = rag_core.retrieve_with_sources(
-        f"{req.role} interview", state["items"], state["vectors"], k=5
+    topic = req.topic.strip()
+
+    # Search the notes by topic (or by role if no topic). Take a pool of the
+    # best chunks and sample from it, so repeated interviews are not identical.
+    query = topic or f"{req.role} interview"
+    pool = rag_core.retrieve_with_sources(
+        query, state["items"], state["vectors"], k=8
     )
+    hits = random.sample(pool, k=min(5, len(pool)))
     notes = "\n".join(h["text"] for h in hits)
+
+    role_for_prompt = f"{req.role} (focus on: {topic})" if topic else req.role
     try:
         questions = state["engine"].generate_questions(
-            req.role, req.difficulty, req.num_questions,
+            role_for_prompt, req.difficulty, req.num_questions,
             req.resume_summary, notes_context=notes,
         )
     except genai_errors.APIError as e:
@@ -129,7 +153,12 @@ def report(sid: str):
     if not session or not session["records"]:
         raise HTTPException(404, "No answers yet")
     records = session["records"]
-    scores = [r["evaluation"].get("score", 0) for r in records if r["evaluation"]]
+    scores = [
+        r["evaluation"]["score"]
+        for r in records
+        if isinstance(r.get("evaluation"), dict)
+        and isinstance(r["evaluation"].get("score"), (int, float))
+    ]
     try:
         summary = state["engine"].generate_final_report(records)
     except genai_errors.APIError as e:
