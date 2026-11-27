@@ -2,7 +2,11 @@
 
 An AI mock-interview app that asks questions **from your own study notes** (PDFs), scores your answers, and shows the source chunks it used. Built with FastAPI, Next.js, a custom RAG pipeline, and an MCP server.
 
-<!-- Add demo GIF here: ![demo](docs/demo.gif) -->
+![demo](docs/demo.gif)
+
+| Feedback with sources | Final report |
+|---|---|
+| ![feedback](docs/feedback.png) | ![report](docs/report.png) |
 
 ## Features
 - Choose a topic (RAG, LLM, Prompt Engineering, Vector DB, Generative AI)
@@ -71,3 +75,8 @@ Add it to Claude Desktop's `claude_desktop_config.json`, then ask Claude to quiz
 - Small knowledge base (5 PDFs, 44 chunks), eval set is only 14 questions
 - Scores come from an LLM, so they can vary
 - Local Ollama model is slower and less accurate than Gemini
+
+### Quick start (Windows)
+```powershell
+powershell -ExecutionPolicy Bypass -File .\run.ps1
+```
