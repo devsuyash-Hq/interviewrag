@@ -15,6 +15,7 @@ An AI mock-interview app that asks questions **from your own study notes** (PDFs
 - Final report page after the session
 - MCP server so Claude Desktop can use the same notes
 - Gemini with automatic fallback to local Ollama when Gemini returns 503
+- Interview history saved in Postgres (`GET /history`)
 
 ## Architecture
 ```
@@ -33,6 +34,13 @@ interviewrag/
 ```
 
 ## Setup
+
+### 0. Database (Postgres, for interview history)
+
+```bash
+docker run --name interviewrag-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=interviewrag -p 5432:5432 -d postgres:16
+```
+Set `DATABASE_URL` in `backend/.env` (see `.env.example`). Tables are created automatically on startup. If Postgres is down, interviews still work, only history is not saved.
 
 ### 1. Backend
 ```bash
