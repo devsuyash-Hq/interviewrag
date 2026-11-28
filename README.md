@@ -1,5 +1,6 @@
 # InterviewRAG
 
+![CI](https://github.com/devsuyash-Hq/InterviewRAG/actions/workflows/ci.yml/badge.svg)
 An AI mock-interview app that asks questions **from your own study notes** (PDFs), scores your answers, and shows the source chunks it used. Built with FastAPI, Next.js, a custom RAG pipeline, and an MCP server.
 
 ![demo](docs/demo.gif)
