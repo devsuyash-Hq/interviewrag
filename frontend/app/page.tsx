@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 
 const API = "http://127.0.0.1:8000";
 
@@ -149,17 +151,12 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100 flex justify-center px-4 py-12">
-      <div className="w-full max-w-2xl">
-        <h1 className="text-3xl font-bold">InterviewRAG</h1>
-        <p className="text-zinc-400 mt-1 mb-8">
-          Practice interviews grounded in your own notes.
-        </p>
-
-        {error && (
-          <div className="mb-6 rounded-lg border border-red-800 bg-red-950 p-3 text-sm text-red-200">
-            {error}
-          </div>
-        )}
+              <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold">InterviewRAG</h1>
+          <Link href="/history" className="text-sm text-indigo-400 hover:underline">
+            History
+          </Link>
+        </div>
 
         {/* 1) Setup form */}
         {questions.length === 0 && (
