@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 import rag_core
 from ai_engine import AIInterviewEngine
+from db import init_db, list_sessions, save_answer, save_session
 from resume_parser import extract_text_from_pdf
 
 state: dict = {}      # RAG index + engine, built once at startup
@@ -28,6 +29,13 @@ async def lifespan(app: FastAPI):
     state["vectors"] = rag_core.embed_in_batches([i["text"] for i in items])
     state["engine"] = AIInterviewEngine()
     print(f"Index ready: {len(items)} chunks loaded.")
+
+    # History is optional: if Postgres is down, interviews still work.
+    try:
+        init_db()
+        print("Database ready.")
+    except Exception as e:
+        print(f"Database unavailable, history will not be saved: {e}")
     yield
 
 
@@ -117,6 +125,7 @@ def start_session(req: StartRequest):
         raise HTTPException(502, "Could not generate questions")
     sid = uuid.uuid4().hex
     sessions[sid] = {"questions": questions, "records": []}
+    save_session(sid, req.role, topic, req.difficulty, len(questions))
     return {"session_id": sid, "questions": questions}
 
 
@@ -144,6 +153,7 @@ def answer(sid: str, body: AnswerRequest):
         "answer": body.answer,
         "evaluation": evaluation,
     })
+    save_answer(sid, q["question"], body.answer, evaluation, hits)
     return {"evaluation": evaluation, "sources": hits}
 
 
@@ -168,3 +178,9 @@ def report(sid: str):
         "records": records,
         "summary": summary,
     }
+
+
+@app.get("/history")
+def history():
+    """Latest saved interviews with answer count and average score."""
+    return {"sessions": list_sessions()}
